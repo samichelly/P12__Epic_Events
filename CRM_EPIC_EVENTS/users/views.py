@@ -1,12 +1,30 @@
-import bcrypt
 import click
-from models import User, Customer, Contract, Event, session
 from datetime import datetime, timedelta
+from decimal import Decimal
+from rich import print
+from rich.console import Console
+from rich.table import Table
+
+
+from models import User, Customer, Contract, Event, session
+from permissions import (
+    read_permission,
+    create_customer_permission,
+    create_event_permission,
+    create_contract_permission,
+    update_event_permission,
+)
 
 
 class Context:
     def __init__(self):
-        self.user = None  # Stocker l'utilisateur authentifié
+        # self.user = None
+        self.user = (
+            session.query(User)
+            .filter_by(email="xav@laine.com", password="xavier")
+            .first()
+        )
+        self.customer = None
 
 
 pass_context = click.make_pass_decorator(Context, ensure=True)
@@ -25,18 +43,33 @@ def login(context):
     """Authenticate a user."""
     email = click.prompt("Email", type=str)
     password = click.prompt("Password", type=str, hide_input=True)
-
-    user = authenticate_user(email, password)
+    user = session.query(User).filter_by(email=email, password=password).first()
 
     if user:
-        print(f"Authentication successful for user with email {user.email}")
-        context.obj.user = user
+        print(
+            f"[bold green]Authentication successful[/bold green] for user with email {user.email}"
+        )
+        context.user = user
+        print("context")
+        print(context.user.email)
+        # cli.invoke(authenticated_users)
+        # context.invoke(authenticated_users)
+
+        # authenticated_users_cli = create_authenticated_users_cli()
+        # authenticated_users_cli()
+
+        # return True
+        # authenticated_users()
+        # context.forward(authenticated_users)
+        # print("nextttttt")
+        # click.invoke(authenticated_users, context=context)
     else:
         print("Authentication failed.")
 
 
 @cli.command()
-def input_new_user():
+@pass_context
+def input_new_user(ctx):
     """Create a new user."""
     click.echo("Creating a new user:")
     email = click.prompt("Email", type=str)
@@ -47,25 +80,6 @@ def input_new_user():
     last_name = click.prompt("Last Name", type=str)
     role = click.prompt("Role", type=click.Choice(["sales", "support", "management"]))
 
-    create_user(email, password, first_name, last_name, role)
-    print("User created successfully.")
-
-
-def authenticate_user(email, password):
-    user = session.query(User).filter_by(email=email, password=password).first()
-
-    if user:
-        # if user and bcrypt.checkpw(password.encode("utf-8"), user.password.encode("utf-8")):
-        print(f"Successful login for user with email {email}")
-        return user
-    else:
-        print(f"Login failed for user with email {email}")
-        return False
-
-
-@cli.command()
-def create_user(email, password, first_name, last_name, role):
-    """Create a new user."""
     new_user = User(
         email=email,
         password=password,
@@ -73,80 +87,263 @@ def create_user(email, password, first_name, last_name, role):
         last_name=last_name,
         role=role,
     )
-
     session.add(new_user)
     session.commit()
-    print("User created successfully")
-    return
+    print("[bold green]User created successfully[/bold green].")
 
 
-@cli.group()
+# def create_authenticated_users_cli():
+#     @click.group()
+#     @pass_context
+#     def authenticated_users(context):
+#         """Commands for authenticated users"""
+#         print("OKKKKKKK")
+#         print(context)
+#         # context.obj = Context()
+
+#     @authenticated_users.command()
+#     def list_events():
+#         """List all events."""
+#         print("dans la nouvelle commande")
+
+
+# @cli.group()
+# @click.pass_context
+@click.group()
 @pass_context
 def authenticated_users(context):
     """Commands for authenticated users"""
-    pass
+    print("OKKKKKKK")
+    print(context)
+    # context.obj = Context()
 
 
-@authenticated_users.command()
-def list_customers():
+def format_value(value):
+    """Format a value for display in a table."""
+    if isinstance(value, Decimal):
+        return f"{value:.2f}"
+    elif isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    elif isinstance(value, bool):
+        return "Yes" if value else "No"
+    else:
+        return str(value)
+
+
+@cli.command()
+@pass_context
+def list_customers(ctx):
     """List all customers."""
-    customers = session.query(Customer).all()
+    if read_permission(ctx):
+        # print(ctx.user)
+        # print(ctx.user.role)
+        console = Console()
+        customers = session.query(Customer).all()
 
-    if not customers:
-        print("No customers found.")
-        return
+        if not customers:
+            print("[bold yellow]No customers found.[/bold yellow]")
+            return
 
-    print("List of customers:")
-    for customer in customers:
-        print(f"{customer.first_name} {customer.last_name} - {customer.email}")
+        # print("[bold cyan]List of customers:[/bold cyan]")
+        table = Table(title="List of customers")
+        table.add_column("Full Name", style="cyan")
+        table.add_column("Email", style="magenta")
+        table.add_column("Phone", style="cyan")
+        table.add_column("Company Name", style="magenta")
+        table.add_column("Date Registred", style="cyan")
+        table.add_column("Last Contact", style="magenta")
+        
+
+        for customer in customers:
+            table.add_row(
+                customer.__repr__(),
+                customer.email,
+                customer.phone,
+                customer.company_name,
+                format_value(customer.creation_date),
+                format_value(customer.last_contact_date)
+            )
+            # table.add_row(customer.id, customer, customer.email)
+
+            # print(f"[cyan]{customer.id} - {customer} - {customer.email}[/cyan]")
+    # console = Console()
+    console.print(table)
 
 
-@authenticated_users.command()
-def list_contracts():
+@cli.command()
+# @authenticated_users.command()
+@pass_context
+def list_contracts(ctx):
     """List all contracts."""
-    # ... (code to list all contracts)
+    if read_permission(ctx):
+        console = Console()
+        contracts = session.query(Contract).all()
+
+        if not contracts:
+            print("[bold yellow]No contracts found.[/bold yellow]")
+            return
+
+        table = Table(title="List of contracts")
+        table.add_column("Total Amount", style="cyan")
+        table.add_column("Remaining Amount", style="magenta")
+        table.add_column("Creation Date", style="cyan")
+        table.add_column("Signed", style="magenta")
+        for contract in contracts:
+            table.add_row(
+                format_value(contract.total_amount),
+                format_value(contract.remaining_amount),
+                format_value(contract.creation_date),
+                format_value(contract.is_signed),
+            )
+
+    console.print(table)
 
 
-@authenticated_users.command()
-def list_events():
+@cli.command()
+# @authenticated_users.command()
+@pass_context
+def list_events(ctx):
     """List all events."""
-    # ... (code to list all events)
+    if read_permission(ctx):
+        console = Console()
+        events = session.query(Event).all()
+
+        if not events:
+            print("[bold yellow]No events found.[/bold yellow]")
+            return
+
+        print("[bold cyan]List of events:[/bold cyan]")
+        table = Table(title="List of events")
+        table.add_column("Event Name", style="cyan")
+        table.add_column("Date Start", style="magenta")
+        table.add_column("Date End", style="cyan")
+        table.add_column("Location", style="magenta")
+        table.add_column("Attendees", style="cyan")
+        table.add_column("Notes", style="magenta")
+        for event in events:
+            # print(
+            #     f"[cyan]{event.event_name} - {event.event_date_start} - {event.event_date_end}[/cyan]"
+            # )
+
+            table.add_row(
+                event.event_name,
+                format_value(event.event_date_start),
+                format_value(event.event_date_end),
+                event.location,
+                format_value(event.attendees),
+                format_value(event.notes),
+            )
+
+    console.print(table)
 
 
-@authenticated_users.command()
-def input_new_customer():
+@cli.command()
+@pass_context
+def create_new_customer(ctx):
     """Create a new customer."""
-    click.echo("Creating a new customer:")
-    first_name = click.prompt("Customer First Name", type=str)
-    last_name = click.prompt("Customer Last Name", type=str)
-    email = click.prompt("Customer Email", type=str)
-    phone = click.prompt("Customer Phone", type=str)
-    company_name = click.prompt("Customer Company Name", type=str)
+    if create_customer_permission(ctx):
+        # new_user = (
+        #     session.query(User).filter_by(email="jh@support.com", password="aqa").first()
+        # )
+        print("ctx.user.id : ", ctx.user.id)
+        click.echo("Creating a new customer:")
+        first_name = click.prompt("Customer First Name", type=str)
+        last_name = click.prompt("Customer Last Name", type=str)
+        email = click.prompt("Customer Email", type=str)
+        phone = click.prompt("Customer Phone", type=str)
+        company_name = click.prompt("Customer Company Name", type=str)
 
-    create_customer(first_name, last_name, email, phone, company_name)
-    print("Customer created successfully.")
+        new_customer = Customer(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            phone=phone,
+            company_name=company_name,
+            sales_contact_id=ctx.user.id,
+        )
 
-    # return first_name, last_name, email, phone, company_name
-
-
-@click.command()
-def create_customer(first_name, last_name, email, phone, company_name):
-    """Create a new customer."""
-    new_customer = Customer(
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        phone=phone,
-        company_name=company_name,
-        # sales_contact=new_user,
-    )
-
-    session.add(new_customer)
-    session.commit()
-    print("Customer created successfully")
+        session.add(new_customer)
+        session.commit()
+        print("[bold green]Customer created successfully[/bold green].")
+        ctx.customer = new_customer
+        print(ctx.customer)
+        context = click.get_current_context()
+        print("okkkkk")
+        context.invoke(create_new_contract)
 
 
-cli.add_command(authenticated_users)
+@cli.command()
+@pass_context
+def create_new_contract(ctx):
+    """Create a new contract."""
+    if create_contract_permission(ctx):
+        print("dans la seconde commande")
+
+        # user = session.query(User).filter_by(email="jh@support.com", password="aqa").first()
+        customer = session.query(Customer).first()
+
+        print("customer : ", customer)
+
+        click.echo("Creating a new contract:")
+        total_amount = click.prompt("Total Amount", type=str)
+        remaining_amount = click.prompt("Remaining Amount", type=str)
+        is_signed_input = click.prompt("Is the contract signed? (y/n)", type=str)
+        is_signed = is_signed_input.lower() == "y"
+
+        new_contract = Contract(
+            total_amount=total_amount,
+            remaining_amount=remaining_amount,
+            is_signed=is_signed,
+            customer_id=customer.id,
+            management_contact_id=ctx.user.id,
+        )
+
+        session.add(new_contract)
+        session.commit()
+        print("[bold green]Contract created successfully[/bold green].")
+
+
+@cli.command()
+@pass_context
+def create_new_event(ctx):
+    """Create a new event."""
+    if create_event_permission(ctx):
+        # user = session.query(User).filter_by(email="guy@toul.com", password="asa").first()
+        contract = session.query(Contract).first()
+
+        click.echo("Creating a new event:")
+
+        event_name = click.prompt("Event Name", type=str)
+
+        event_date_start = click.prompt(
+            "Event Start Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
+        )
+        event_date_end = click.prompt(
+            "Event End Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
+        )
+
+        location = click.prompt("Event Location", type=str)
+        attendees = click.prompt("Number of Attendees", type=int)
+        notes = click.prompt("Event Notes", type=str)
+
+        new_event = Event(
+            event_name=event_name,
+            event_date_start=event_date_start,
+            event_date_end=event_date_end,
+            location=location,
+            attendees=attendees,
+            notes=notes,
+            contract_id=contract.id,
+            support_contact_id=ctx.user.id,
+        )
+
+        session.add(new_event)
+        session.commit()
+        print("[bold green]Event created successfully[/bold green].")
+
 
 if __name__ == "__main__":
     cli()
+    # valid_login = cli()
+    # print(valid_login)
+    # authenticated_users()
