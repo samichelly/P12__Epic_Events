@@ -2,8 +2,6 @@ from models import User_role
 
 
 def has_permission(context, allowed_roles):
-    # print("context")
-    # print(context.user.role.name)
     if context.user.role.name in allowed_roles:
         return True
     else:
@@ -15,21 +13,21 @@ def read_permission(context):
     return has_permission(context, ["sales", "support", "management"])
 
 
-def create_customer_permission(context):
+def sales_permission(context):
     return has_permission(context, ["sales"])
 
 
-def create_event_permission(context):
-    return has_permission(context, ["sales"])
+# def create_event_permission(context):
+#     return has_permission(context, ["sales"])
 
 
-def create_contract_permission(context):
+def management_permission(context):
     return has_permission(context, ["management"])
 
 
-def create_contract_permission(context):
-    return has_permission(context, ["management"])
+# def management_permission(context):
+#     return has_permission(context, ["management"])
 
 
-def update_event_permission(context):
-    return has_permission(context, ["management"])
+# def management_permission(context):
+#     return has_permission(context, ["management"])

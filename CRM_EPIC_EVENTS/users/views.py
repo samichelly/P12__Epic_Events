@@ -9,21 +9,19 @@ from rich.table import Table
 from models import User, Customer, Contract, Event, session
 from permissions import (
     read_permission,
-    create_customer_permission,
-    create_event_permission,
-    create_contract_permission,
-    update_event_permission,
+    sales_permission,
+    management_permission,
 )
 
 
 class Context:
     def __init__(self):
-        self.user = None
-        # self.user = (
-        #     session.query(User)
-        #     .filter_by(email="xav@laine.com", password="xavier")
-        #     .first()
-        # )
+        # self.user = None
+        self.user = (
+            session.query(User)
+            .filter_by(email="xav@laine.com", password="xavier")
+            .first()
+        )
         self.customer = None
 
 
@@ -44,18 +42,14 @@ def print_context(context):
     print(context.user)
     # print(context.user.email)
 
+
 @cli.command()
 @pass_context
 def login(context):
     """Authenticate a user."""
     email = click.prompt("Email", type=str)
     password = click.prompt("Password", type=str, hide_input=True)
-    # user = session.query(User).filter_by(email=email, password=password).first()
-    
     user = session.query(User).filter_by(email=email).first()
-
-    print("user : ", user)
-    print("return hash :", user.check_password(password))
 
     if user and user.check_password(password):
         print(
@@ -153,7 +147,6 @@ def list_customers(ctx):
         table.add_column("Company Name", style="magenta")
         table.add_column("Date Registred", style="cyan")
         table.add_column("Last Contact", style="magenta")
-        
 
         for customer in customers:
             table.add_row(
@@ -162,7 +155,7 @@ def list_customers(ctx):
                 customer.phone,
                 customer.company_name,
                 format_value(customer.creation_date),
-                format_value(customer.last_contact_date)
+                format_value(customer.last_contact_date),
             )
             # table.add_row(customer.id, customer, customer.email)
 
@@ -240,9 +233,9 @@ def list_events(ctx):
 
 @cli.command()
 @pass_context
-def create_new_customer(ctx):
+def create_customer(ctx):
     """Create a new customer."""
-    if create_customer_permission(ctx):
+    if sales_permission(ctx):
         # new_user = (
         #     session.query(User).filter_by(email="jh@support.com", password="aqa").first()
         # )
@@ -267,17 +260,44 @@ def create_new_customer(ctx):
         session.commit()
         print("[bold green]Customer created successfully[/bold green].")
         ctx.customer = new_customer
-        print(ctx.customer)
-        # context = click.get_current_context()
-        # print("okkkkk")
-        # context.invoke(create_new_contract)
+        # print(ctx.customer)
+
+@cli.command()
+@pass_context
+def update_customer(ctx):
+    """Update a customer."""
+    if sales_permission(ctx):
+        customer_email = click.prompt("Enter Customer Email to update", type=str)
+        customer = session.query(Customer).filter_by(email=customer_email).first()
+
+        if customer:
+            click.echo("Updating customer:")
+            first_name = click.prompt("Customer First Name", type=str, default=customer.first_name)
+            last_name = click.prompt("Customer Last Name", type=str, default=customer.last_name)
+            email = click.prompt("Customer Email", type=str, default=customer.email)
+            phone = click.prompt("Customer Phone", type=str, default=customer.phone)
+            company_name = click.prompt("Customer Company Name", type=str, default=customer.company_name)
+
+            # Update customer fields
+            customer.first_name = first_name
+            customer.last_name = last_name
+            customer.email = email
+            customer.phone = phone
+            customer.company_name = company_name
+
+            session.commit()
+            print("[bold green]Customer updated successfully[/bold green].")
+            ctx.customer = customer
+            print(ctx.customer)
+        else:
+            print(f"No customer found with email {customer_email}.")
 
 
 @cli.command()
 @pass_context
-def create_new_contract(ctx):
+def create_contract(ctx):
     """Create a new contract."""
-    if create_contract_permission(ctx):
+    if management_permission(ctx):
         print("dans la seconde commande")
 
         # user = session.query(User).filter_by(email="jh@support.com", password="aqa").first()
@@ -345,6 +365,3 @@ def create_new_event(ctx):
 
 if __name__ == "__main__":
     cli()
-    # valid_login = cli()
-    # print(valid_login)
-    # authenticated_users()
