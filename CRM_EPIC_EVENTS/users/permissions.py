@@ -26,8 +26,10 @@ def create_event_permission(context):
 def create_contract_permission(context):
     return has_permission(context, ["management"])
 
+
 def create_contract_permission(context):
     return has_permission(context, ["management"])
+
 
 def update_event_permission(context):
     return has_permission(context, ["management"])

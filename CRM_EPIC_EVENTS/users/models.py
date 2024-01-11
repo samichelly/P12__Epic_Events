@@ -1,14 +1,8 @@
-import bcrypt
-from sqlalchemy.ext.hybrid import hybrid_property
-
-
 import sys
 from pathlib import Path
-import enum
 
 parent_path = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_path))
-print(parent_path)
 
 from sqlalchemy import (
     create_engine,
@@ -24,14 +18,13 @@ from sqlalchemy import (
     Enum,
     Sequence,
 )
-from sqlalchemy.dialects.postgresql import ENUM
+import bcrypt
+import enum
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from CRM_EPIC_EVENTS.settings import DATABASE_URL
 
-# print(DATABASE_URL)
-
-# DATABASE_URL = f"postgresql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL)
 
 Session = sessionmaker(bind=engine)
@@ -51,30 +44,26 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True, nullable=False)
-    # _password = Column("password", String, nullable=False)
-    password = Column(String, nullable=False)
+    _password = Column("password", String, nullable=False)
     first_name = Column(String)
     last_name = Column(String)
-    role = Column(
-        ENUM("sales", "support", "management"),
-        name="user_role",
-        default="support",  # enum.ENUM
-    )
     role = Column(Enum(User_role), name="user_role", default="support")
 
-    # @hybrid_property
-    # def password(self):
-    #     return self._password
+    @hybrid_property
+    def password(self):
+        return self._password
 
-    # @password.setter
-    # def set_password_hach(self, plaintext_password):
-    #     hashed_password = bcrypt.hashpw(
-    #         plaintext_password.encode("utf-8"), bcrypt.gensalt()
-    #     )
-    #     self._password = hashed_password.decode("utf-8")
+    @password.setter
+    def password(self, plaintext_password):
+        hashed_password = bcrypt.hashpw(
+            plaintext_password.encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
+        self._password = hashed_password
 
-    # def check_password(self, plaintext_password):
-    #     return bcrypt.checkpw(plaintext_password.encode("utf-8"), self._password.encode("utf-8"))
+    def check_password(self, plaintext_password):
+        return bcrypt.checkpw(
+            plaintext_password.encode("utf-8"), self._password.encode("utf-8")
+        )
 
 
 class Customer(Base):

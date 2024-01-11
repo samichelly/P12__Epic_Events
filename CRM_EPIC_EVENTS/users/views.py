@@ -18,12 +18,12 @@ from permissions import (
 
 class Context:
     def __init__(self):
-        # self.user = None
-        self.user = (
-            session.query(User)
-            .filter_by(email="xav@laine.com", password="xavier")
-            .first()
-        )
+        self.user = None
+        # self.user = (
+        #     session.query(User)
+        #     .filter_by(email="xav@laine.com", password="xavier")
+        #     .first()
+        # )
         self.customer = None
 
 
@@ -39,30 +39,31 @@ def cli(context):
 
 @cli.command()
 @pass_context
+def print_context(context):
+    """Authenticate a user."""
+    print(context.user)
+    # print(context.user.email)
+
+@cli.command()
+@pass_context
 def login(context):
     """Authenticate a user."""
     email = click.prompt("Email", type=str)
     password = click.prompt("Password", type=str, hide_input=True)
-    user = session.query(User).filter_by(email=email, password=password).first()
+    # user = session.query(User).filter_by(email=email, password=password).first()
+    
+    user = session.query(User).filter_by(email=email).first()
 
-    if user:
+    print("user : ", user)
+    print("return hash :", user.check_password(password))
+
+    if user and user.check_password(password):
         print(
             f"[bold green]Authentication successful[/bold green] for user with email {user.email}"
         )
         context.user = user
         print("context")
         print(context.user.email)
-        # cli.invoke(authenticated_users)
-        # context.invoke(authenticated_users)
-
-        # authenticated_users_cli = create_authenticated_users_cli()
-        # authenticated_users_cli()
-
-        # return True
-        # authenticated_users()
-        # context.forward(authenticated_users)
-        # print("nextttttt")
-        # click.invoke(authenticated_users, context=context)
     else:
         print("Authentication failed.")
 
@@ -267,9 +268,9 @@ def create_new_customer(ctx):
         print("[bold green]Customer created successfully[/bold green].")
         ctx.customer = new_customer
         print(ctx.customer)
-        context = click.get_current_context()
-        print("okkkkk")
-        context.invoke(create_new_contract)
+        # context = click.get_current_context()
+        # print("okkkkk")
+        # context.invoke(create_new_contract)
 
 
 @cli.command()
