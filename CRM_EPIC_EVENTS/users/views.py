@@ -5,12 +5,13 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 
-
+from table import display_customers, display_contracts, display_events
 from models import User, Customer, Contract, Event, session
 from permissions import (
     read_permission,
     sales_permission,
     management_permission,
+    support_permission,
 )
 
 
@@ -18,9 +19,7 @@ class Context:
     def __init__(self):
         # self.user = None
         self.user = (
-            session.query(User)
-            .filter_by(email="xav@laine.com", password="xavier")
-            .first()
+            session.query(User).filter_by(email="xav@laine.com", password="xavier").first()
         )
         self.customer = None
 
@@ -130,38 +129,12 @@ def format_value(value):
 def list_customers(ctx):
     """List all customers."""
     if read_permission(ctx):
-        # print(ctx.user)
-        # print(ctx.user.role)
-        console = Console()
         customers = session.query(Customer).all()
+        display_customers(customers)
 
         if not customers:
             print("[bold yellow]No customers found.[/bold yellow]")
             return
-
-        # print("[bold cyan]List of customers:[/bold cyan]")
-        table = Table(title="List of customers")
-        table.add_column("Full Name", style="cyan")
-        table.add_column("Email", style="magenta")
-        table.add_column("Phone", style="cyan")
-        table.add_column("Company Name", style="magenta")
-        table.add_column("Date Registred", style="cyan")
-        table.add_column("Last Contact", style="magenta")
-
-        for customer in customers:
-            table.add_row(
-                customer.__repr__(),
-                customer.email,
-                customer.phone,
-                customer.company_name,
-                format_value(customer.creation_date),
-                format_value(customer.last_contact_date),
-            )
-            # table.add_row(customer.id, customer, customer.email)
-
-            # print(f"[cyan]{customer.id} - {customer} - {customer.email}[/cyan]")
-    # console = Console()
-    console.print(table)
 
 
 @cli.command()
@@ -170,27 +143,12 @@ def list_customers(ctx):
 def list_contracts(ctx):
     """List all contracts."""
     if read_permission(ctx):
-        console = Console()
         contracts = session.query(Contract).all()
+        display_contracts(contracts)
 
         if not contracts:
-            print("[bold yellow]No contracts found.[/bold yellow]")
+            print("[bold yellow]No customers found.[/bold yellow]")
             return
-
-        table = Table(title="List of contracts")
-        table.add_column("Total Amount", style="cyan")
-        table.add_column("Remaining Amount", style="magenta")
-        table.add_column("Creation Date", style="cyan")
-        table.add_column("Signed", style="magenta")
-        for contract in contracts:
-            table.add_row(
-                format_value(contract.total_amount),
-                format_value(contract.remaining_amount),
-                format_value(contract.creation_date),
-                format_value(contract.is_signed),
-            )
-
-    console.print(table)
 
 
 @cli.command()
@@ -199,36 +157,12 @@ def list_contracts(ctx):
 def list_events(ctx):
     """List all events."""
     if read_permission(ctx):
-        console = Console()
         events = session.query(Event).all()
+        display_events(events)
 
         if not events:
             print("[bold yellow]No events found.[/bold yellow]")
             return
-
-        print("[bold cyan]List of events:[/bold cyan]")
-        table = Table(title="List of events")
-        table.add_column("Event Name", style="cyan")
-        table.add_column("Date Start", style="magenta")
-        table.add_column("Date End", style="cyan")
-        table.add_column("Location", style="magenta")
-        table.add_column("Attendees", style="cyan")
-        table.add_column("Notes", style="magenta")
-        for event in events:
-            # print(
-            #     f"[cyan]{event.event_name} - {event.event_date_start} - {event.event_date_end}[/cyan]"
-            # )
-
-            table.add_row(
-                event.event_name,
-                format_value(event.event_date_start),
-                format_value(event.event_date_end),
-                event.location,
-                format_value(event.attendees),
-                format_value(event.notes),
-            )
-
-    console.print(table)
 
 
 @cli.command()
@@ -262,6 +196,7 @@ def create_customer(ctx):
         ctx.customer = new_customer
         # print(ctx.customer)
 
+
 @cli.command()
 @pass_context
 def update_customer(ctx):
@@ -272,11 +207,17 @@ def update_customer(ctx):
 
         if customer:
             click.echo("Updating customer:")
-            first_name = click.prompt("Customer First Name", type=str, default=customer.first_name)
-            last_name = click.prompt("Customer Last Name", type=str, default=customer.last_name)
+            first_name = click.prompt(
+                "Customer First Name", type=str, default=customer.first_name
+            )
+            last_name = click.prompt(
+                "Customer Last Name", type=str, default=customer.last_name
+            )
             email = click.prompt("Customer Email", type=str, default=customer.email)
             phone = click.prompt("Customer Phone", type=str, default=customer.phone)
-            company_name = click.prompt("Customer Company Name", type=str, default=customer.company_name)
+            company_name = click.prompt(
+                "Customer Company Name", type=str, default=customer.company_name
+            )
 
             # Update customer fields
             customer.first_name = first_name
@@ -298,8 +239,6 @@ def update_customer(ctx):
 def create_contract(ctx):
     """Create a new contract."""
     if management_permission(ctx):
-        print("dans la seconde commande")
-
         # user = session.query(User).filter_by(email="jh@support.com", password="aqa").first()
         customer = session.query(Customer).first()
 
@@ -326,9 +265,43 @@ def create_contract(ctx):
 
 @cli.command()
 @pass_context
-def create_new_event(ctx):
+def update_contract(ctx):
+    """Update a contract."""
+    if management_permission(ctx):
+        contract_id = click.prompt("Enter Contract ID to update", type=int)
+        contract = session.get(Contract, contract_id)
+
+        if contract:
+            click.echo("Updating contract:")
+            total_amount = click.prompt(
+                "Total Amount", type=str, default=str(contract.total_amount)
+            )
+            remaining_amount = click.prompt(
+                "Remaining Amount", type=str, default=str(contract.remaining_amount)
+            )
+            is_signed_input = click.prompt(
+                "Is the contract signed? (y/n)",
+                type=str,
+                default="y" if contract.is_signed else "n",
+            )
+            is_signed = is_signed_input.lower() == "y"
+
+            # Update contract fields
+            contract.total_amount = total_amount
+            contract.remaining_amount = remaining_amount
+            contract.is_signed = is_signed
+
+            session.commit()
+            print("[bold green]Contract updated successfully[/bold green].")
+        else:
+            print(f"No contract found with ID {contract_id}.")
+
+
+@cli.command()
+@pass_context
+def create_event(ctx):
     """Create a new event."""
-    if create_event_permission(ctx):
+    if sales_permission(ctx):
         # user = session.query(User).filter_by(email="guy@toul.com", password="asa").first()
         contract = session.query(Contract).first()
 
@@ -355,12 +328,82 @@ def create_new_event(ctx):
             attendees=attendees,
             notes=notes,
             contract_id=contract.id,
-            support_contact_id=ctx.user.id,
+            support_contact_id=None,
         )
 
         session.add(new_event)
         session.commit()
         print("[bold green]Event created successfully[/bold green].")
+
+
+@cli.command()
+@pass_context
+def update_event(ctx):
+    """Assign support event."""
+    user_role = ctx.user.role.name
+    try:
+        if user_role in ["support", "management"]:
+            event_id = click.prompt("Enter Event ID to update", type=int)
+            event = session.get(Event, event_id)
+
+            if event and user_role == "support":
+                click.echo(f"Updating event: {event.event_name}:")
+
+                event_name = click.prompt(
+                    "Event Name", default=event.event_name, type=str
+                )
+                event_date_start = click.prompt(
+                    "Event Start Date (YYYY-MM-DD HH:MM)",
+                    default=event.event_date_start,
+                    type=click.DateTime(),
+                )
+                event_date_end = click.prompt(
+                    "Event End Date (YYYY-MM-DD HH:MM)",
+                    default=event.event_date_end,
+                    type=click.DateTime(),
+                )
+                location = click.prompt(
+                    "Event Location", default=event.location, type=str
+                )
+                attendees = click.prompt(
+                    "Number of Attendees", default=event.attendees, type=int
+                )
+                notes = click.prompt("Event Notes", default=event.notes, type=str)
+
+                event.event_name = event_name
+                event.event_date_start = event_date_start
+                event.event_date_end = event_date_end
+                event.location = location
+                event.attendees = attendees
+                event.notes = notes
+                session.commit()
+                click.echo("[bold green]Event operation completed[/bold green].")
+
+            elif event and user_role == "management":
+                click.echo(f"Assign support event: {event.event_name}:")
+                support_email = click.prompt("Enter Support Contact Email", type=str)
+                support_user = (
+                    session.query(User)
+                    .filter_by(email=support_email, role="support")
+                    .first()
+                )
+
+                if support_user:
+                    event.support_contact_id = support_user.id
+                    session.commit()
+                    click.echo("[bold green]Event operation completed[/bold green].")
+                else:
+                    click.echo(
+                        f"{support_email} is not a support user. Support contact not assigned."
+                    )
+
+            else:
+                click.echo(f"Event with ID {event_id} not found.")
+        else:
+            click.echo("User does not have the required role for this operation.")
+
+    except Exception as e:
+        click.echo(f"Error : {e}")
 
 
 if __name__ == "__main__":

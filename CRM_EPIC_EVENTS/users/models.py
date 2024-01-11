@@ -113,7 +113,7 @@ class Event(Base):
     attendees = Column(Integer, nullable=False)
     notes = Column(Text, nullable=False)
     contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
-    support_contact_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    support_contact_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     contract = relationship("Contract", backref="event_contract")
     support_contact = relationship("User", backref="event_support")
