@@ -17,10 +17,7 @@ from permissions import (
 
 class Context:
     def __init__(self):
-        # self.user = None
-        self.user = (
-            session.query(User).filter_by(email="xav@laine.com", password="xavier").first()
-        )
+        self.user = None
         self.customer = None
 
 
@@ -35,16 +32,76 @@ def cli(context):
 
 
 @cli.command()
-@pass_context
-def print_context(context):
-    """Authenticate a user."""
-    print(context.user)
-    # print(context.user.email)
+@click.option(
+    "--action",
+    type=click.Choice(["create_user", "login"]),
+    prompt="Choose action",
+    help="Choose action to perform.",
+)
+@click.pass_context
+def main(ctx, action):
+    """Main command to choose between create_user and login."""
+    if action == "create_user":
+        ctx.invoke(create_user)
+        ctx.invoke(login)
+    elif action == "login":
+        ctx.invoke(login)
+        ctx.invoke(lists_customers_contracts_events)
+        ctx.invoke(authenticated_users)
+        # authenticated_users(ctx)
+    else:
+        click.echo("Invalid action. Please choose a valid action.")
+
+
+@cli.command()
+@click.pass_context
+def authenticated_users(ctx):
+    """Main command to choose between various actions."""
+    choices = [
+        "create-customer",
+        "create-contract",
+        "create-event",
+        "lists-customers-contracts-events",
+        "update-contract",
+        "update-customer",
+        "update-event",
+    ]
+
+    action = click.prompt("Select a choice", type=click.Choice(choices))
+
+    if action == "create-customer":
+        ctx.invoke(create_customer)
+    elif action == "create-contract":
+        id_customer = click.prompt("Select ID Customer", type=int)
+        ctx.forward(create_contract, id_customer)
+    elif action == "create-event":
+        id_contract = click.prompt("Select ID Contract", type=int)
+        ctx.forward(create_event, id_contract)
+    elif action == "update-customer":
+        # update_customer(ctx)
+        customer_id = click.prompt("Enter Contract ID to update", type=int)
+        ctx.forward(update_customer, customer_id)
+    elif action == "update-contract":
+        contract_id = click.prompt("Enter Contract ID to update", type=int)
+        ctx.forward(update_contract, contract_id)
+    elif action == "update-event":
+        event_id = click.prompt("Enter Contract ID to update", type=int)
+        ctx.forward(update_event, event_id)
+        update_event(ctx)
+    # elif action == "delete-customer":
+    #     delete_customer(ctx)
+    # elif action == "delete-contract":
+    #     delete_contract(ctx)
+    # elif action == "delete-event":
+    #     delete_event(ctx)
+    else:
+        click.echo("Invalid action. Please choose a valid action.")
+        # main()
 
 
 @cli.command()
 @pass_context
-def login(context):
+def login(ctx):
     """Authenticate a user."""
     email = click.prompt("Email", type=str)
     password = click.prompt("Password", type=str, hide_input=True)
@@ -54,16 +111,16 @@ def login(context):
         print(
             f"[bold green]Authentication successful[/bold green] for user with email {user.email}"
         )
-        context.user = user
+        ctx.user = user
         print("context")
-        print(context.user.email)
+        print(ctx.user.email)
     else:
         print("Authentication failed.")
 
 
 @cli.command()
-@pass_context
-def input_new_user(ctx):
+# @pass_context
+def create_user():
     """Create a new user."""
     click.echo("Creating a new user:")
     email = click.prompt("Email", type=str)
@@ -86,94 +143,53 @@ def input_new_user(ctx):
     print("[bold green]User created successfully[/bold green].")
 
 
-# def create_authenticated_users_cli():
-#     @click.group()
-#     @pass_context
-#     def authenticated_users(context):
-#         """Commands for authenticated users"""
-#         print("OKKKKKKK")
-#         print(context)
-#         # context.obj = Context()
-
-#     @authenticated_users.command()
-#     def list_events():
-#         """List all events."""
-#         print("dans la nouvelle commande")
-
-
-# @cli.group()
-# @click.pass_context
-@click.group()
-@pass_context
-def authenticated_users(context):
-    """Commands for authenticated users"""
-    print("OKKKKKKK")
-    print(context)
-    # context.obj = Context()
-
-
-def format_value(value):
-    """Format a value for display in a table."""
-    if isinstance(value, Decimal):
-        return f"{value:.2f}"
-    elif isinstance(value, datetime):
-        return value.strftime("%Y-%m-%d %H:%M:%S")
-    elif isinstance(value, bool):
-        return "Yes" if value else "No"
-    else:
-        return str(value)
-
-
 @cli.command()
 @pass_context
-def list_customers(ctx):
-    """List all customers."""
+def lists_customers_contracts_events(ctx):
+    """List all customers, contracts, events."""
     if read_permission(ctx):
         customers = session.query(Customer).all()
         display_customers(customers)
 
-        if not customers:
-            print("[bold yellow]No customers found.[/bold yellow]")
-            return
-
-
-@cli.command()
-# @authenticated_users.command()
-@pass_context
-def list_contracts(ctx):
-    """List all contracts."""
-    if read_permission(ctx):
         contracts = session.query(Contract).all()
         display_contracts(contracts)
 
-        if not contracts:
-            print("[bold yellow]No customers found.[/bold yellow]")
-            return
-
-
-@cli.command()
-# @authenticated_users.command()
-@pass_context
-def list_events(ctx):
-    """List all events."""
-    if read_permission(ctx):
         events = session.query(Event).all()
         display_events(events)
 
-        if not events:
-            print("[bold yellow]No events found.[/bold yellow]")
-            return
+
+# @cli.command()
+# @pass_context
+# def list_contracts(ctx):
+#     """List all contracts."""
+#     if read_permission(ctx):
+#         contracts = session.query(Contract).all()
+#         display_contracts(contracts)
+
+#         if not contracts:
+#             print("[bold yellow]No customers found.[/bold yellow]")
+#             return
+
+
+# @cli.command()
+# @pass_context
+# def list_events(ctx):
+#     """List all events."""
+#     if read_permission(ctx):
+#         events = session.query(Event).all()
+#         display_events(events)
+
+#         if not events:
+#             print("[bold yellow]No events found.[/bold yellow]")
+#             return
 
 
 @cli.command()
 @pass_context
 def create_customer(ctx):
     """Create a new customer."""
+    print("dans la création de client")
     if sales_permission(ctx):
-        # new_user = (
-        #     session.query(User).filter_by(email="jh@support.com", password="aqa").first()
-        # )
-        print("ctx.user.id : ", ctx.user.id)
         click.echo("Creating a new customer:")
         first_name = click.prompt("Customer First Name", type=str)
         last_name = click.prompt("Customer Last Name", type=str)
@@ -193,17 +209,15 @@ def create_customer(ctx):
         session.add(new_customer)
         session.commit()
         print("[bold green]Customer created successfully[/bold green].")
-        ctx.customer = new_customer
-        # print(ctx.customer)
 
 
 @cli.command()
 @pass_context
-def update_customer(ctx):
+def update_customer(ctx, customer_id):
     """Update a customer."""
     if sales_permission(ctx):
-        customer_email = click.prompt("Enter Customer Email to update", type=str)
-        customer = session.query(Customer).filter_by(email=customer_email).first()
+        # customer_email = click.prompt("Enter Customer Email to update", type=str)
+        customer = session.query(Customer).filter_by(id=customer_id).first()
 
         if customer:
             click.echo("Updating customer:")
@@ -231,18 +245,15 @@ def update_customer(ctx):
             ctx.customer = customer
             print(ctx.customer)
         else:
-            print(f"No customer found with email {customer_email}.")
+            print("No customer found.")
 
 
 @cli.command()
 @pass_context
-def create_contract(ctx):
+def create_contract(ctx, id_customer):
     """Create a new contract."""
     if management_permission(ctx):
-        # user = session.query(User).filter_by(email="jh@support.com", password="aqa").first()
-        customer = session.query(Customer).first()
-
-        print("customer : ", customer)
+        customer = session.query(Customer).filter_by(id=id_customer).first()
 
         click.echo("Creating a new contract:")
         total_amount = click.prompt("Total Amount", type=str)
@@ -265,10 +276,9 @@ def create_contract(ctx):
 
 @cli.command()
 @pass_context
-def update_contract(ctx):
+def update_contract(ctx, contract_id):
     """Update a contract."""
     if management_permission(ctx):
-        contract_id = click.prompt("Enter Contract ID to update", type=int)
         contract = session.get(Contract, contract_id)
 
         if contract:
@@ -294,16 +304,16 @@ def update_contract(ctx):
             session.commit()
             print("[bold green]Contract updated successfully[/bold green].")
         else:
-            print(f"No contract found with ID {contract_id}.")
+            print("No contract found.")
 
 
 @cli.command()
 @pass_context
-def create_event(ctx):
+def create_event(ctx, id_contract):
     """Create a new event."""
     if sales_permission(ctx):
-        # user = session.query(User).filter_by(email="guy@toul.com", password="asa").first()
-        contract = session.query(Contract).first()
+        contract = session.get(Contract, id_contract)
+        # contract = session.query(Contract).first()
 
         click.echo("Creating a new event:")
 
@@ -338,12 +348,12 @@ def create_event(ctx):
 
 @cli.command()
 @pass_context
-def update_event(ctx):
+def update_event(ctx, event_id):
     """Assign support event."""
     user_role = ctx.user.role.name
     try:
         if user_role in ["support", "management"]:
-            event_id = click.prompt("Enter Event ID to update", type=int)
+            # event_id = click.prompt("Enter Event ID to update", type=int)
             event = session.get(Event, event_id)
 
             if event and user_role == "support":

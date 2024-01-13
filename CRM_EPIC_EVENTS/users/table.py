@@ -33,6 +33,7 @@ def display_customers(customers):
         padding=(0, 2),
     )
 
+    table.add_column("ID", style="magenta")
     table.add_column("Full Name", style="cyan")
     # table.add_column("Email", style="magenta")
     # table.add_column("Phone", style="cyan")
@@ -42,6 +43,7 @@ def display_customers(customers):
 
     for customer in customers:
         table.add_row(
+            format_value(customer.id),
             customer.__repr__(),
             # customer.email,
             # customer.phone,
