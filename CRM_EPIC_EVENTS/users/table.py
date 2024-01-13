@@ -101,6 +101,7 @@ def display_events(events):
         padding=(0, 2),
     )
 
+    table.add_column("ID", style="magenta")
     table.add_column("Event Name", style="cyan")
     table.add_column("Date Start", style="magenta")
     table.add_column("Date End", style="cyan")
@@ -110,6 +111,7 @@ def display_events(events):
 
     for event in events:
         table.add_row(
+            format_value(event.id),
             event.event_name,
             format_value(event.event_date_start),
             format_value(event.event_date_end),
