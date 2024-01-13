@@ -48,6 +48,7 @@ class User(Base):
     first_name = Column(String)
     last_name = Column(String)
     role = Column(Enum(User_role), name="user_role", default="support")
+    is_active = Column(Boolean, default=True)
 
     @hybrid_property
     def password(self):
