@@ -97,8 +97,10 @@ def authenticated_users(ctx):
         update_event(ctx)
     # elif action == "delete-customer":
     #     delete_customer(ctx)
-    # elif action == "delete-contract":
-    #     delete_contract(ctx)
+    elif action == "delete-contract":
+        contract_id = click.prompt("Enter Contract ID to delete", type=int)
+        ctx.forward(delete_contract, contract_id)
+        # delete_contract(ctx)
     elif action == "delete-event":
         event_id = click.prompt("Enter Event ID to delete", type=int)
         ctx.forward(delete_event, event_id)
@@ -318,47 +320,70 @@ def update_contract(ctx, contract_id):
 
 @cli.command()
 @pass_context
+def delete_contract(ctx, contract_id):
+    """Delete contract."""
+    if management_permission(ctx):
+        contract = session.get(Contract, contract_id)
+
+        if contract and contract.management_contact_id == ctx.user.id:
+            click.echo("Deleting contract")
+
+            events = session.query(Event).filter_by(contract_id=contract.id).all()
+            for event in events:
+                session.delete(event)
+
+            session.delete(contract)
+            session.commit()
+            print("[bold green]Contract deleted successfully[/bold green].")
+        else:
+            click.echo("Contract not found or Permission denied.")
+
+
+@cli.command()
+@pass_context
 def create_event(ctx, id_contract):
     """Create a new event."""
     if sales_permission(ctx):
         contract = session.get(Contract, id_contract)
-        # contract = session.query(Contract).first()
 
-        click.echo("Creating a new event:")
+        if contract.is_signed is True:
+            click.echo("Creating a new event:")
 
-        event_name = click.prompt("Event Name", type=str)
+            event_name = click.prompt("Event Name", type=str)
 
-        event_date_start = click.prompt(
-            "Event Start Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
-        )
-        event_date_end = click.prompt(
-            "Event End Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
-        )
+            event_date_start = click.prompt(
+                "Event Start Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
+            )
+            event_date_end = click.prompt(
+                "Event End Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
+            )
 
-        location = click.prompt("Event Location", type=str)
-        attendees = click.prompt("Number of Attendees", type=int)
-        notes = click.prompt("Event Notes", type=str)
+            location = click.prompt("Event Location", type=str)
+            attendees = click.prompt("Number of Attendees", type=int)
+            notes = click.prompt("Event Notes", type=str)
 
-        new_event = Event(
-            event_name=event_name,
-            event_date_start=event_date_start,
-            event_date_end=event_date_end,
-            location=location,
-            attendees=attendees,
-            notes=notes,
-            contract_id=contract.id,
-            support_contact_id=None,
-        )
+            new_event = Event(
+                event_name=event_name,
+                event_date_start=event_date_start,
+                event_date_end=event_date_end,
+                location=location,
+                attendees=attendees,
+                notes=notes,
+                contract_id=contract.id,
+                support_contact_id=None,
+            )
 
-        session.add(new_event)
-        session.commit()
-        print("[bold green]Event created successfully[/bold green].")
+            session.add(new_event)
+            session.commit()
+            print("[bold green]Event created successfully[/bold green].")
+        else:
+            print("[bold red]Contract no signed[/bold red].")
 
 
 @cli.command()
 @pass_context
 def update_event(ctx, event_id):
-    """Assign support event."""
+    """Update event and Assign support event."""
     user_role = ctx.user.role.name
     try:
         if user_role in ["support", "management"]:
@@ -427,7 +452,7 @@ def update_event(ctx, event_id):
 @cli.command()
 @pass_context
 def delete_event(ctx, event_id):
-    """Create a new event."""
+    """Delete event."""
     if support_permission(ctx):
         event = session.get(Event, event_id)
 

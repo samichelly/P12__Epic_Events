@@ -35,8 +35,8 @@ def display_customers(customers):
 
     table.add_column("ID", style="magenta")
     table.add_column("Full Name", style="cyan")
-    # table.add_column("Email", style="magenta")
-    # table.add_column("Phone", style="cyan")
+    table.add_column("Email", style="magenta")
+    table.add_column("Phone", style="cyan")
     table.add_column("Company Name", style="magenta")
     table.add_column("Date Registered", style="cyan")
     table.add_column("Last Contact", style="magenta")
@@ -45,8 +45,8 @@ def display_customers(customers):
         table.add_row(
             format_value(customer.id),
             customer.__repr__(),
-            # customer.email,
-            # customer.phone,
+            customer.email,
+            customer.phone,
             customer.company_name,
             format_value(customer.creation_date),
             format_value(customer.last_contact_date),
