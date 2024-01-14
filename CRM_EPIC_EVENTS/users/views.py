@@ -69,8 +69,8 @@ def authenticated_users(ctx):
         "update-contract",
         "update-customer",
         "update-event",
-        "delete-contract",
         "delete-customer",
+        "delete-contract",
         "delete-event",
     ]
 
@@ -79,11 +79,11 @@ def authenticated_users(ctx):
     if action == "create-customer":
         ctx.invoke(create_customer)
     elif action == "create-contract":
-        id_customer = click.prompt("Select ID Customer", type=int)
-        ctx.forward(create_contract, id_customer)
+        customer_id = click.prompt("Select ID Customer", type=int)
+        ctx.forward(create_contract, customer_id)
     elif action == "create-event":
-        id_contract = click.prompt("Select ID Contract", type=int)
-        ctx.forward(create_event, id_contract)
+        contract_id = click.prompt("Select ID Contract", type=int)
+        ctx.forward(create_event, contract_id)
     elif action == "update-customer":
         # update_customer(ctx)
         customer_id = click.prompt("Enter Customer ID to update", type=int)
@@ -95,8 +95,10 @@ def authenticated_users(ctx):
         event_id = click.prompt("Enter Event ID to update", type=int)
         ctx.forward(update_event, event_id)
         update_event(ctx)
-    # elif action == "delete-customer":
-    #     delete_customer(ctx)
+    elif action == "delete-customer":
+        customer_id = click.prompt("Enter Customer ID to delete", type=int)
+        ctx.forward(delete_customer, customer_id)
+        delete_customer(ctx)
     elif action == "delete-contract":
         contract_id = click.prompt("Enter Contract ID to delete", type=int)
         ctx.forward(delete_contract, contract_id)
@@ -257,6 +259,31 @@ def update_customer(ctx, customer_id):
             print(ctx.customer)
         else:
             print("No customer found.")
+
+
+@cli.command()
+@pass_context
+def delete_customer(ctx, customer_id):
+    """Delete contract."""
+    if sales_permission(ctx):
+        customer = session.get(Customer, customer_id)
+
+        if customer and customer.sales_contact_id == ctx.user.id:
+            click.echo("Deleting customer")
+
+            contracts = session.query(Contract).filter_by(customer_id=customer.id).all()
+            for contract in contracts:
+                events = session.query(Event).filter_by(contract_id=contract.id).all()
+                for event in events:
+                    session.delete(event)
+
+                session.delete(contract)
+
+            session.delete(customer)
+            session.commit()
+            print("[bold green]Customer deleted successfully[/bold green].")
+        else:
+            click.echo("Customer not found or Permission denied.")
 
 
 @cli.command()
