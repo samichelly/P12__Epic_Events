@@ -46,10 +46,7 @@ def main(ctx, action):
         # ctx.invoke(login)
     elif action == "login":
         log_in = ctx.invoke(login)
-        print("log_in : ", log_in)
         if log_in is True:
-            print("Dans le True")
-            # ctx.invoke(lists_customers_contracts_events)
             ctx.invoke(authenticated_users)
     else:
         click.echo("Invalid action. Please choose a valid action.")
@@ -72,6 +69,7 @@ def authenticated_users(ctx):
         "delete-customer",
         "delete-contract",
         "delete-event",
+        "delete-user",
     ]
 
     action = click.prompt("Select a choice", type=click.Choice(choices))
@@ -85,7 +83,6 @@ def authenticated_users(ctx):
         contract_id = click.prompt("Select ID Contract", type=int)
         ctx.forward(create_event, contract_id)
     elif action == "update-customer":
-        # update_customer(ctx)
         customer_id = click.prompt("Enter Customer ID to update", type=int)
         ctx.forward(update_customer, customer_id)
     elif action == "update-contract":
@@ -102,10 +99,11 @@ def authenticated_users(ctx):
     elif action == "delete-contract":
         contract_id = click.prompt("Enter Contract ID to delete", type=int)
         ctx.forward(delete_contract, contract_id)
-        # delete_contract(ctx)
     elif action == "delete-event":
         event_id = click.prompt("Enter Event ID to delete", type=int)
         ctx.forward(delete_event, event_id)
+    elif action == "delete-user":
+        ctx.invoke(delete_user)
     else:
         click.echo("Invalid action. Please choose a valid action.")
         # main()
@@ -154,7 +152,46 @@ def create_user():
     session.add(new_user)
     session.commit()
     print("[bold green]User created successfully[/bold green].")
-    main()
+    return new_user
+    # main()
+
+
+@cli.command()
+@pass_context
+def delete_user(ctx):
+    """Delete user."""
+    user_to_delete = session.query(User).get(ctx.user.id)
+
+    if user_to_delete:
+        role_name = user_to_delete.role.name
+        user_to_delete.is_active = False
+        user_to_delete.phone_number = None
+
+        replacement_user = (
+            session.query(User)
+            .filter(
+                User.id != user_to_delete.id, User.role == role_name, User.is_active
+            )
+            .first()
+        )
+
+        if replacement_user:
+            for customer in user_to_delete.customer_sales:
+                customer.sales_contact_id = replacement_user.id
+
+            for contract in user_to_delete.contract_management:
+                contract.management_contact_id = replacement_user.id
+
+            for event in user_to_delete.event_support:
+                event.support_contact_id = replacement_user.id
+
+            session.commit()
+
+            print(f"[bold green]User deleted successfully[/bold green].")
+        else:
+            print(
+                f"[bold red]No remplacement user. Please create a new user with same role[/bold red]."
+            )
 
 
 @cli.command()
@@ -170,32 +207,6 @@ def lists_customers_contracts_events(ctx):
 
         events = session.query(Event).all()
         display_events(events)
-
-
-# @cli.command()
-# @pass_context
-# def list_contracts(ctx):
-#     """List all contracts."""
-#     if read_permission(ctx):
-#         contracts = session.query(Contract).all()
-#         display_contracts(contracts)
-
-#         if not contracts:
-#             print("[bold yellow]No customers found.[/bold yellow]")
-#             return
-
-
-# @cli.command()
-# @pass_context
-# def list_events(ctx):
-#     """List all events."""
-#     if read_permission(ctx):
-#         events = session.query(Event).all()
-#         display_events(events)
-
-#         if not events:
-#             print("[bold yellow]No events found.[/bold yellow]")
-#             return
 
 
 @cli.command()
@@ -255,8 +266,6 @@ def update_customer(ctx, customer_id):
 
             session.commit()
             print("[bold green]Customer updated successfully[/bold green].")
-            ctx.customer = customer
-            print(ctx.customer)
         else:
             print("No customer found.")
 

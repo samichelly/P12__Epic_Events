@@ -20,6 +20,7 @@ from sqlalchemy import (
 )
 import bcrypt
 import enum
+from datetime import date
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -44,6 +45,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True, nullable=False)
+    phone_number = Column(String, nullable=True)
     _password = Column("password", String, nullable=False)
     first_name = Column(String)
     last_name = Column(String)
@@ -76,9 +78,9 @@ class Customer(Base):
     email = Column(String, unique=True, nullable=False)
     phone = Column(String, nullable=False)
     company_name = Column(String, nullable=False)
-    creation_date = Column(Date, server_default="now()", nullable=False)
+    creation_date = Column(Date, default=date.today, nullable=False)
     last_contact_date = Column(
-        Date, server_default="now()", onupdate="now()", nullable=False
+        Date, default=date.today, onupdate=date.today, nullable=False
     )
     sales_contact_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
@@ -94,7 +96,7 @@ class Contract(Base):
     id = Column(Integer, primary_key=True)
     total_amount = Column(DECIMAL(10, 2), nullable=False)
     remaining_amount = Column(DECIMAL(10, 2), nullable=False)
-    creation_date = Column(Date, server_default="now()", nullable=False)
+    creation_date = Column(Date, default=date.today, nullable=False)
     is_signed = Column(Boolean, default=False)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     management_contact_id = Column(Integer, ForeignKey("users.id"), nullable=False)
