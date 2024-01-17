@@ -56,57 +56,58 @@ def main(ctx, action):
 @click.pass_context
 def authenticated_users(ctx):
     """Main command to choose between various actions."""
-    print("Dans le authentifié")
-    ctx.invoke(lists_customers_contracts_events)
+    while True:
+        print("Lists of Customers, Contracts and Events")
+        ctx.invoke(lists_customers_contracts_events)
 
-    choices = [
-        "create-customer",
-        "create-contract",
-        "create-event",
-        "update-contract",
-        "update-customer",
-        "update-event",
-        "delete-customer",
-        "delete-contract",
-        "delete-event",
-        "delete-user",
-    ]
+        choices = [
+            "create-customer",
+            "create-contract",
+            "create-event",
+            "update-contract",
+            "update-customer",
+            "update-event",
+            "delete-customer",
+            "delete-contract",
+            "delete-event",
+            "delete-user",
+            "exit",
+        ]
 
-    action = click.prompt("Select a choice", type=click.Choice(choices))
+        action = click.prompt("Select a choice", type=click.Choice(choices))
 
-    if action == "create-customer":
-        ctx.invoke(create_customer)
-    elif action == "create-contract":
-        customer_id = click.prompt("Select ID Customer", type=int)
-        ctx.forward(create_contract, customer_id)
-    elif action == "create-event":
-        contract_id = click.prompt("Select ID Contract", type=int)
-        ctx.forward(create_event, contract_id)
-    elif action == "update-customer":
-        customer_id = click.prompt("Enter Customer ID to update", type=int)
-        ctx.forward(update_customer, customer_id)
-    elif action == "update-contract":
-        contract_id = click.prompt("Enter Contract ID to update", type=int)
-        ctx.forward(update_contract, contract_id)
-    elif action == "update-event":
-        event_id = click.prompt("Enter Event ID to update", type=int)
-        ctx.forward(update_event, event_id)
-        update_event(ctx)
-    elif action == "delete-customer":
-        customer_id = click.prompt("Enter Customer ID to delete", type=int)
-        ctx.forward(delete_customer, customer_id)
-        delete_customer(ctx)
-    elif action == "delete-contract":
-        contract_id = click.prompt("Enter Contract ID to delete", type=int)
-        ctx.forward(delete_contract, contract_id)
-    elif action == "delete-event":
-        event_id = click.prompt("Enter Event ID to delete", type=int)
-        ctx.forward(delete_event, event_id)
-    elif action == "delete-user":
-        ctx.invoke(delete_user)
-    else:
-        click.echo("Invalid action. Please choose a valid action.")
-        # main()
+        if action == "create-customer":
+            ctx.invoke(create_customer)
+        elif action == "create-contract":
+            customer_id = click.prompt("Select ID Customer", type=int)
+            ctx.forward(create_contract, customer_id)
+        elif action == "create-event":
+            contract_id = click.prompt("Select ID Contract", type=int)
+            ctx.forward(create_event, contract_id)
+        elif action == "update-customer":
+            customer_id = click.prompt("Enter Customer ID to update", type=int)
+            ctx.forward(update_customer, customer_id)
+        elif action == "update-contract":
+            contract_id = click.prompt("Enter Contract ID to update", type=int)
+            ctx.forward(update_contract, contract_id)
+        elif action == "update-event":
+            event_id = click.prompt("Enter Event ID to update", type=int)
+            ctx.forward(update_event, event_id)
+        elif action == "delete-customer":
+            customer_id = click.prompt("Enter Customer ID to delete", type=int)
+            ctx.forward(delete_customer, customer_id)
+        elif action == "delete-contract":
+            contract_id = click.prompt("Enter Contract ID to delete", type=int)
+            ctx.forward(delete_contract, contract_id)
+        elif action == "delete-event":
+            event_id = click.prompt("Enter Event ID to delete", type=int)
+            ctx.forward(delete_event, event_id)
+        elif action == "delete-user":
+            ctx.invoke(delete_user)
+        elif action == "exit":
+            break
+        else:
+            click.echo("Invalid action. Please choose a valid action.")
 
 
 @cli.command()
@@ -351,7 +352,7 @@ def update_contract(ctx, contract_id):
             session.commit()
             print("[bold green]Contract updated successfully[/bold green].")
         else:
-            print("No contract found.")
+            print("[bold red]Contract not found or Permission denied[/bold red].")
 
 
 @cli.command()
@@ -372,7 +373,7 @@ def delete_contract(ctx, contract_id):
             session.commit()
             print("[bold green]Contract deleted successfully[/bold green].")
         else:
-            click.echo("Contract not found or Permission denied.")
+            print("[bold red]Contract not found or Permission denied[/bold red].")
 
 
 @cli.command()
@@ -420,68 +421,80 @@ def create_event(ctx, id_contract):
 @pass_context
 def update_event(ctx, event_id):
     """Update event and Assign support event."""
+    current_datetime = datetime.now()
     user_role = ctx.user.role.name
     try:
         if user_role in ["support", "management"]:
             event = session.get(Event, event_id)
+            if event:
+                if event.event_date_end > current_datetime:
+                    if user_role == "support":
+                        click.echo(f"Updating event: {event.event_name}:")
 
-            if event and user_role == "support":
-                click.echo(f"Updating event: {event.event_name}:")
+                        event_name = click.prompt(
+                            "Event Name", default=event.event_name, type=str
+                        )
+                        event_date_start = click.prompt(
+                            "Event Start Date (YYYY-MM-DD HH:MM)",
+                            default=event.event_date_start,
+                            type=click.DateTime(),
+                        )
+                        event_date_end = click.prompt(
+                            "Event End Date (YYYY-MM-DD HH:MM)",
+                            default=event.event_date_end,
+                            type=click.DateTime(),
+                        )
+                        location = click.prompt(
+                            "Event Location", default=event.location, type=str
+                        )
+                        attendees = click.prompt(
+                            "Number of Attendees", default=event.attendees, type=int
+                        )
+                        notes = click.prompt(
+                            "Event Notes", default=event.notes, type=str
+                        )
 
-                event_name = click.prompt(
-                    "Event Name", default=event.event_name, type=str
-                )
-                event_date_start = click.prompt(
-                    "Event Start Date (YYYY-MM-DD HH:MM)",
-                    default=event.event_date_start,
-                    type=click.DateTime(),
-                )
-                event_date_end = click.prompt(
-                    "Event End Date (YYYY-MM-DD HH:MM)",
-                    default=event.event_date_end,
-                    type=click.DateTime(),
-                )
-                location = click.prompt(
-                    "Event Location", default=event.location, type=str
-                )
-                attendees = click.prompt(
-                    "Number of Attendees", default=event.attendees, type=int
-                )
-                notes = click.prompt("Event Notes", default=event.notes, type=str)
+                        event.event_name = event_name
+                        event.event_date_start = event_date_start
+                        event.event_date_end = event_date_end
+                        event.location = location
+                        event.attendees = attendees
+                        event.notes = notes
+                        session.commit()
+                        click.echo(
+                            "[bold green]Event operation completed[/bold green]."
+                        )
 
-                event.event_name = event_name
-                event.event_date_start = event_date_start
-                event.event_date_end = event_date_end
-                event.location = location
-                event.attendees = attendees
-                event.notes = notes
-                session.commit()
-                click.echo("[bold green]Event operation completed[/bold green].")
+                    else:  # user_role == "management"
+                        click.echo(f"Assign support event: {event.event_name}:")
+                        support_email = click.prompt(
+                            "Enter Support Contact Email", type=str
+                        )
+                        support_user = (
+                            session.query(User)
+                            .filter_by(email=support_email, role="support")
+                            .first()
+                        )
 
-            elif event and user_role == "management":
-                click.echo(f"Assign support event: {event.event_name}:")
-                support_email = click.prompt("Enter Support Contact Email", type=str)
-                support_user = (
-                    session.query(User)
-                    .filter_by(email=support_email, role="support")
-                    .first()
-                )
+                        if support_user:
+                            event.support_contact_id = support_user.id
+                            session.commit()
+                            click.echo(
+                                "[bold green]Event operation completed[/bold green]."
+                            )
+                        else:
+                            click.echo(
+                                f"{support_email} is not a support user. Support contact not assigned."
+                            )
 
-                if support_user:
-                    event.support_contact_id = support_user.id
-                    session.commit()
-                    click.echo("[bold green]Event operation completed[/bold green].")
                 else:
-                    click.echo(
-                        f"{support_email} is not a support user. Support contact not assigned."
-                    )
-
+                    raise ValueError("Unable to update. The event has already ended.")
             else:
-                click.echo(f"Event with ID {event_id} not found.")
+                raise ValueError("Event not found.")
         else:
-            click.echo("User does not have the required role for this operation.")
+            raise ValueError("User does not have the required role for this operation.")
 
-    except Exception as e:
+    except ValueError as e:
         click.echo(f"Error : {e}")
 
 
