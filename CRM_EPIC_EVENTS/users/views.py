@@ -6,6 +6,8 @@ from rich.console import Console
 from rich.table import Table
 
 from table import display_customers, display_contracts, display_events
+
+# from customers import create_customer
 from models import User, Customer, Contract, Event, session
 from permissions import (
     read_permission,
@@ -18,7 +20,6 @@ from permissions import (
 class Context:
     def __init__(self):
         self.user = None
-        self.customer = None
 
 
 pass_context = click.make_pass_decorator(Context, ensure=True)
@@ -32,24 +33,31 @@ def cli(context):
 
 
 @cli.command()
-@click.option(
-    "--action",
-    type=click.Choice(["create_user", "login"]),
-    prompt="Welcome to CRM Epic Events, Choose an action",
-    help="Choose action to perform.",
-)
 @click.pass_context
-def main(ctx, action):
+def main(ctx):
     """Main command to choose between create_user and login."""
-    if action == "create_user":
-        ctx.invoke(create_user)
-        # ctx.invoke(login)
-    elif action == "login":
-        log_in = ctx.invoke(login)
-        if log_in is True:
-            ctx.invoke(authenticated_users)
-    else:
-        click.echo("Invalid action. Please choose a valid action.")
+    in_app = True
+    while in_app:
+        print("ctx.user : ", ctx)
+        choices = [
+            "create_user",
+            "login",
+            "exit",
+        ]
+        action = click.prompt("Select a choice", type=click.Choice(choices))
+
+        if action == "create_user":
+            ctx.invoke(create_user)
+        elif action == "login":
+            log_in = ctx.invoke(login)
+            if log_in is True:
+                ctx.invoke(authenticated_users)
+        elif action == "exit":
+            print("dans le exit")
+            in_app = False
+            break
+        else:
+            click.echo("Invalid action. Please choose a valid action.")
 
 
 @cli.command()
@@ -57,63 +65,73 @@ def main(ctx, action):
 def authenticated_users(ctx):
     """Main command to choose between various actions."""
     while True:
-        print("Lists of Customers, Contracts and Events")
-        ctx.invoke(lists_customers_contracts_events)
+        key = click.prompt("Press a key + enter to load data")
+        if key:
+            print("Lists of Customers, Contracts and Events")
+            ctx.invoke(lists_customers_contracts_events)
 
-        choices = [
-            "create-customer",
-            "create-contract",
-            "create-event",
-            "update-contract",
-            "update-customer",
-            "update-event",
-            "delete-customer",
-            "delete-contract",
-            "delete-event",
-            "delete-user",
-            "exit",
-        ]
+            choices = [
+                "create-customer",
+                "create-contract",
+                "create-event",
+                "update-contract",
+                "update-customer",
+                "update-event",
+                "delete-customer",
+                "delete-contract",
+                "delete-event",
+                "delete-user",
+                "logout",
+                "crash",
+            ]
 
-        action = click.prompt("Select a choice", type=click.Choice(choices))
+            action = click.prompt("Select a choice", type=click.Choice(choices))
 
-        if action == "create-customer":
-            ctx.invoke(create_customer)
-        elif action == "create-contract":
-            customer_id = click.prompt("Select ID Customer", type=int)
-            ctx.forward(create_contract, customer_id)
-        elif action == "create-event":
-            contract_id = click.prompt("Select ID Contract", type=int)
-            ctx.forward(create_event, contract_id)
-        elif action == "update-customer":
-            customer_id = click.prompt("Enter Customer ID to update", type=int)
-            ctx.forward(update_customer, customer_id)
-        elif action == "update-contract":
-            contract_id = click.prompt("Enter Contract ID to update", type=int)
-            ctx.forward(update_contract, contract_id)
-        elif action == "update-event":
-            event_id = click.prompt("Enter Event ID to update", type=int)
-            ctx.forward(update_event, event_id)
-        elif action == "delete-customer":
-            customer_id = click.prompt("Enter Customer ID to delete", type=int)
-            ctx.forward(delete_customer, customer_id)
-        elif action == "delete-contract":
-            contract_id = click.prompt("Enter Contract ID to delete", type=int)
-            ctx.forward(delete_contract, contract_id)
-        elif action == "delete-event":
-            event_id = click.prompt("Enter Event ID to delete", type=int)
-            ctx.forward(delete_event, event_id)
-        elif action == "delete-user":
-            ctx.invoke(delete_user)
-        elif action == "exit":
-            break
-        else:
-            click.echo("Invalid action. Please choose a valid action.")
+            if action == "create-customer":
+                ctx.invoke(create_customer)
+            elif action == "create-contract":
+                customer_id = click.prompt("Select ID Customer", type=int)
+                ctx.forward(create_contract, customer_id)
+            elif action == "create-event":
+                contract_id = click.prompt("Select ID Contract", type=int)
+                ctx.forward(create_event, contract_id)
+            elif action == "update-customer":
+                customer_id = click.prompt("Enter Customer ID to update", type=int)
+                ctx.forward(update_customer, customer_id)
+            elif action == "update-contract":
+                contract_id = click.prompt("Enter Contract ID to update", type=int)
+                ctx.forward(update_contract, contract_id)
+            elif action == "update-event":
+                event_id = click.prompt("Enter Event ID to update", type=int)
+                ctx.forward(update_event, event_id)
+            elif action == "delete-customer":
+                customer_id = click.prompt("Enter Customer ID to delete", type=int)
+                ctx.forward(delete_customer, customer_id)
+            elif action == "delete-contract":
+                contract_id = click.prompt("Enter Contract ID to delete", type=int)
+                ctx.forward(delete_contract, contract_id)
+            elif action == "delete-event":
+                event_id = click.prompt("Enter Event ID to delete", type=int)
+                ctx.forward(delete_event, event_id)
+            elif action == "delete-user":
+                ctx.invoke(delete_user)
+            elif action == "logout":
+                # ctx.user = None
+                ctx.invoke(logout)
+                # print("ctx_userrrr : ", ctx.user)
+                # ctx.invoke(main)
+                break
+            elif action == "crash":
+                main()
+            else:
+                click.echo("Invalid action. Please choose a valid action.")
 
 
 @cli.command()
 @pass_context
 def login(ctx):
     """Authenticate a user."""
+    print("ctx.user : ", ctx.user)
     email = click.prompt("Email", type=str)
     password = click.prompt("Password", type=str, hide_input=True)
     user = session.query(User).filter_by(email=email).first()
@@ -131,6 +149,15 @@ def login(ctx):
 
 
 @cli.command()
+@pass_context
+def logout(ctx):
+    """Logout a user."""
+    print("in logout")
+    ctx.user = None
+    print("ctx_userrrr logout : ", ctx.user)
+
+
+@cli.command()
 # @pass_context
 def create_user():
     """Create a new user."""
@@ -141,6 +168,7 @@ def create_user():
     )
     first_name = click.prompt("First Name", type=str)
     last_name = click.prompt("Last Name", type=str)
+    phone_number = click.prompt("Phone Number", type=str)
     role = click.prompt("Role", type=click.Choice(["sales", "support", "management"]))
 
     new_user = User(
@@ -148,12 +176,13 @@ def create_user():
         password=password,
         first_name=first_name,
         last_name=last_name,
+        phone_number=phone_number,
         role=role,
     )
     session.add(new_user)
     session.commit()
     print("[bold green]User created successfully[/bold green].")
-    return new_user
+    # return new_user
     # main()
 
 
@@ -423,12 +452,13 @@ def update_event(ctx, event_id):
     """Update event and Assign support event."""
     current_datetime = datetime.now()
     user_role = ctx.user.role.name
+    user_id = ctx.user.id
     try:
         if user_role in ["support", "management"]:
             event = session.get(Event, event_id)
             if event:
                 if event.event_date_end > current_datetime:
-                    if user_role == "support":
+                    if user_role == "support" and event.support_contact_id == user_id:
                         click.echo(f"Updating event: {event.event_name}:")
 
                         event_name = click.prompt(
@@ -461,11 +491,9 @@ def update_event(ctx, event_id):
                         event.attendees = attendees
                         event.notes = notes
                         session.commit()
-                        click.echo(
-                            "[bold green]Event operation completed[/bold green]."
-                        )
+                        print("[bold green]Event operation completed[/bold green].")
 
-                    else:  # user_role == "management"
+                    elif user_role == "management":
                         click.echo(f"Assign support event: {event.event_name}:")
                         support_email = click.prompt(
                             "Enter Support Contact Email", type=str
@@ -486,7 +514,8 @@ def update_event(ctx, event_id):
                             click.echo(
                                 f"{support_email} is not a support user. Support contact not assigned."
                             )
-
+                    else:
+                        raise ValueError("No support user assigned.")
                 else:
                     raise ValueError("Unable to update. The event has already ended.")
             else:

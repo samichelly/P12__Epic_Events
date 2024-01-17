@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 
 
-def format_value(value):
+def format_value(value, assignation=None):
     """Format a value for display in a table."""
     if isinstance(value, Decimal):
         return f"{value:.2f}"
@@ -15,6 +15,11 @@ def format_value(value):
         return value.strftime("%Y-%m-%d %H:%M:%S")
     elif isinstance(value, bool):
         return "Yes" if value else "No"
+    elif assignation is True:
+        if value is not None:
+            return "Yes"
+        else:
+            return "No"
     else:
         return str(value)
 
@@ -77,7 +82,7 @@ def display_contracts(contracts):
 
     for contract in contracts:
         table.add_row(
-            format_value(contract.id),
+            format_value(contract.id, None),
             format_value(contract.total_amount),
             format_value(contract.remaining_amount),
             format_value(contract.creation_date),
@@ -108,6 +113,7 @@ def display_events(events):
     table.add_column("Location", style="magenta")
     table.add_column("Attendees", style="cyan")
     table.add_column("Notes", style="magenta")
+    table.add_column("Assigned", style="cyan")
 
     for event in events:
         table.add_row(
@@ -118,6 +124,7 @@ def display_events(events):
             event.location,
             format_value(event.attendees),
             format_value(event.notes),
+            format_value(event.support_contact_id, assignation=True),
         )
 
     console.print(table)
