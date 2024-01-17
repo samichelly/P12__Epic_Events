@@ -1,13 +1,8 @@
 import click
-from datetime import datetime, timedelta
-from decimal import Decimal
+from datetime import datetime
 from rich import print
-from rich.console import Console
-from rich.table import Table
-
+from rich.padding import Padding
 from table import display_customers, display_contracts, display_events
-
-# from customers import create_customer
 from models import User, Customer, Contract, Event, session
 from permissions import (
     read_permission,
@@ -38,7 +33,6 @@ def main(ctx):
     """Main command to choose between create_user and login."""
     in_app = True
     while in_app:
-        print("ctx.user : ", ctx)
         choices = [
             "create_user",
             "login",
@@ -53,11 +47,10 @@ def main(ctx):
             if log_in is True:
                 ctx.invoke(authenticated_users)
         elif action == "exit":
-            print("dans le exit")
             in_app = False
             break
         else:
-            click.echo("Invalid action. Please choose a valid action.")
+            pass
 
 
 @cli.command()
@@ -67,7 +60,6 @@ def authenticated_users(ctx):
     while True:
         key = click.prompt("Press a key + enter to load data")
         if key:
-            print("Lists of Customers, Contracts and Events")
             ctx.invoke(lists_customers_contracts_events)
 
             choices = [
@@ -114,51 +106,45 @@ def authenticated_users(ctx):
                 event_id = click.prompt("Enter Event ID to delete", type=int)
                 ctx.forward(delete_event, event_id)
             elif action == "delete-user":
-                ctx.invoke(delete_user)
+                deleted = ctx.invoke(delete_user)
+                if deleted is True:
+                    ctx.invoke(logout)
+                    break
             elif action == "logout":
-                # ctx.user = None
                 ctx.invoke(logout)
-                # print("ctx_userrrr : ", ctx.user)
-                # ctx.invoke(main)
                 break
-            elif action == "crash":
-                main()
             else:
-                click.echo("Invalid action. Please choose a valid action.")
+                pass
 
 
 @cli.command()
 @pass_context
 def login(ctx):
     """Authenticate a user."""
-    print("ctx.user : ", ctx.user)
     email = click.prompt("Email", type=str)
     password = click.prompt("Password", type=str, hide_input=True)
     user = session.query(User).filter_by(email=email).first()
 
     if user and user.check_password(password):
+        print("[bold blue]Login...[/bold blue]")
+        ctx.user = user
         print(
             f"[bold green]Authentication successful[/bold green] for user with email {user.email}"
         )
-        ctx.user = user
-        print("context")
-        print(ctx.user.email)
         return True
     else:
-        print("Authentication failed.")
+        print("[bold red]Authentication failed.[/bold red]")
 
 
 @cli.command()
 @pass_context
 def logout(ctx):
     """Logout a user."""
-    print("in logout")
     ctx.user = None
-    print("ctx_userrrr logout : ", ctx.user)
+    print("[bold blue]Logout...[/bold blue]")
 
 
 @cli.command()
-# @pass_context
 def create_user():
     """Create a new user."""
     click.echo("Creating a new user:")
@@ -182,15 +168,13 @@ def create_user():
     session.add(new_user)
     session.commit()
     print("[bold green]User created successfully[/bold green].")
-    # return new_user
-    # main()
 
 
 @cli.command()
 @pass_context
 def delete_user(ctx):
     """Delete user."""
-    user_to_delete = session.query(User).get(ctx.user.id)
+    user_to_delete = session.get(User, ctx.user.id)
 
     if user_to_delete:
         role_name = user_to_delete.role.name
@@ -208,19 +192,29 @@ def delete_user(ctx):
         if replacement_user:
             for customer in user_to_delete.customer_sales:
                 customer.sales_contact_id = replacement_user.id
+                print(
+                    f"[bold yellow]{customer} reassigned to {replacement_user}[/bold yellow]."
+                )
 
             for contract in user_to_delete.contract_management:
                 contract.management_contact_id = replacement_user.id
+                print(
+                    f"[bold yellow]Contract {contract.id} reassigned to {replacement_user}[/bold yellow]."
+                )
 
             for event in user_to_delete.event_support:
                 event.support_contact_id = replacement_user.id
+                print(
+                    f"[bold yellow]{event.event_name} reassigned to {replacement_user}[/bold yellow]."
+                )
 
             session.commit()
 
-            print(f"[bold green]User deleted successfully[/bold green].")
+            print("[bold green]User deleted successfully[/bold green].")
+            return True
         else:
             print(
-                f"[bold red]No remplacement user. Please create a new user with same role[/bold red]."
+                "[bold red]No remplacement user. Please create a new user with same role[/bold red]."
             )
 
 
@@ -229,6 +223,11 @@ def delete_user(ctx):
 def lists_customers_contracts_events(ctx):
     """List all customers, contracts, events."""
     if read_permission(ctx):
+        print(
+            Padding(
+                "[bold blue]Load Customers, Contracts and Events...[/bold blue]", (1, 0)
+            )
+        )
         customers = session.query(Customer).all()
         display_customers(customers)
 
@@ -243,7 +242,6 @@ def lists_customers_contracts_events(ctx):
 @pass_context
 def create_customer(ctx):
     """Create a new customer."""
-    print("dans la création de client")
     if sales_permission(ctx):
         click.echo("Creating a new customer:")
         first_name = click.prompt("Customer First Name", type=str)

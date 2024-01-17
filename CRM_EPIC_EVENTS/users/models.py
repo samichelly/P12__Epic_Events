@@ -52,6 +52,9 @@ class User(Base):
     role = Column(Enum(User_role), name="user_role", default="support")
     is_active = Column(Boolean, default=True)
 
+    def __repr__(self):
+        return f"{self.first_name} {self.last_name}"
+    
     @hybrid_property
     def password(self):
         return self._password
