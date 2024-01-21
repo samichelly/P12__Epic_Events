@@ -47,14 +47,14 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     phone_number = Column(String, nullable=True)
     _password = Column("password", String, nullable=False)
-    first_name = Column(String)
-    last_name = Column(String)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
     role = Column(Enum(User_role), name="user_role", default="support")
     is_active = Column(Boolean, default=True)
 
     def __repr__(self):
         return f"{self.first_name} {self.last_name}"
-    
+
     @hybrid_property
     def password(self):
         return self._password

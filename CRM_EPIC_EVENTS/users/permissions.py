@@ -1,8 +1,13 @@
+from rich import print
+
+
 def has_permission(context, allowed_roles):
     if context.user.role.name in allowed_roles:
         return True
     else:
-        print("Permission denied. You don't have the required role.")
+        print(
+            "[bold red]Permission denied. You don't have the required role.[/bold red]"
+        )
         return False
 
 

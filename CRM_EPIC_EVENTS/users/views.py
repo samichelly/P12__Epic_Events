@@ -2,6 +2,7 @@ import click
 from datetime import datetime
 from rich import print
 from rich.padding import Padding
+import sentry_sdk
 from table import display_customers, display_contracts, display_events
 from models import User, Customer, Contract, Event, session
 from permissions import (
@@ -66,15 +67,14 @@ def authenticated_users(ctx):
                 "create-customer",
                 "create-contract",
                 "create-event",
-                "update-contract",
                 "update-customer",
+                "update-contract",
                 "update-event",
                 "delete-customer",
                 "delete-contract",
                 "delete-event",
                 "delete-user",
                 "logout",
-                "crash",
             ]
 
             action = click.prompt("Select a choice", type=click.Choice(choices))
@@ -129,7 +129,7 @@ def login(ctx):
         print("[bold blue]Login...[/bold blue]")
         ctx.user = user
         print(
-            f"[bold green]Authentication successful[/bold green] for user with email {user.email}"
+            f"[bold green]Authentication successful for user with email {user.email} [/bold green]"
         )
         return True
     else:
@@ -165,9 +165,16 @@ def create_user():
         phone_number=phone_number,
         role=role,
     )
-    session.add(new_user)
-    session.commit()
-    print("[bold green]User created successfully[/bold green].")
+
+    try:
+        session.add(new_user)
+        session.commit()
+        sentry_sdk.capture_message(f"User {new_user} created successfully!")
+        print("[bold green]User created successfully[/bold green].")
+
+    except Exception as e:
+        print(f"[bold red]Error creating customer: {e}[/bold red].")
+        sentry_sdk.capture_message(f"Error creating user: {e}")
 
 
 @cli.command()
@@ -216,6 +223,8 @@ def delete_user(ctx):
             print(
                 "[bold red]No remplacement user. Please create a new user with same role[/bold red]."
             )
+    else:
+        print("[bold red]No user to delete found[/bold red].")
 
 
 @cli.command()
@@ -285,7 +294,6 @@ def update_customer(ctx, customer_id):
                 "Customer Company Name", type=str, default=customer.company_name
             )
 
-            # Update customer fields
             customer.first_name = first_name
             customer.last_name = last_name
             customer.email = email
@@ -295,7 +303,7 @@ def update_customer(ctx, customer_id):
             session.commit()
             print("[bold green]Customer updated successfully[/bold green].")
         else:
-            print("No customer found.")
+            print("[bold red]No customer found.[/bold red]")
 
 
 @cli.command()
@@ -320,7 +328,7 @@ def delete_customer(ctx, customer_id):
             session.commit()
             print("[bold green]Customer deleted successfully[/bold green].")
         else:
-            click.echo("Customer not found or Permission denied.")
+            print("[bold red]Customer not found.[/bold red]")
 
 
 @cli.command()
@@ -329,24 +337,28 @@ def create_contract(ctx, id_customer):
     """Create a new contract."""
     if management_permission(ctx):
         customer = session.query(Customer).filter_by(id=id_customer).first()
+        if customer:
+            click.echo("Creating a new contract:")
+            total_amount = click.prompt("Total Amount", type=str)
+            remaining_amount = click.prompt("Remaining Amount", type=str)
+            is_signed_input = click.prompt("Is the contract signed? (y/n)", type=str)
+            is_signed = is_signed_input.lower() == "y"
 
-        click.echo("Creating a new contract:")
-        total_amount = click.prompt("Total Amount", type=str)
-        remaining_amount = click.prompt("Remaining Amount", type=str)
-        is_signed_input = click.prompt("Is the contract signed? (y/n)", type=str)
-        is_signed = is_signed_input.lower() == "y"
+            new_contract = Contract(
+                total_amount=total_amount,
+                remaining_amount=remaining_amount,
+                is_signed=is_signed,
+                customer_id=customer.id,
+                management_contact_id=ctx.user.id,
+            )
 
-        new_contract = Contract(
-            total_amount=total_amount,
-            remaining_amount=remaining_amount,
-            is_signed=is_signed,
-            customer_id=customer.id,
-            management_contact_id=ctx.user.id,
-        )
-
-        session.add(new_contract)
-        session.commit()
-        print("[bold green]Contract created successfully[/bold green].")
+            session.add(new_contract)
+            session.commit()
+            if is_signed:
+                sentry_sdk.capture_message("Contract signed !")
+            print("[bold green]Contract created successfully[/bold green].")
+        else:
+            print("[bold red]Customer not found.[/bold red]")
 
 
 @cli.command()
@@ -377,9 +389,11 @@ def update_contract(ctx, contract_id):
             contract.is_signed = is_signed
 
             session.commit()
+            if is_signed:
+                sentry_sdk.capture_message("Contract signed !")
             print("[bold green]Contract updated successfully[/bold green].")
         else:
-            print("[bold red]Contract not found or Permission denied[/bold red].")
+            print("[bold red]Contract not found.[/bold red]")
 
 
 @cli.command()
@@ -409,39 +423,38 @@ def create_event(ctx, id_contract):
     """Create a new event."""
     if sales_permission(ctx):
         contract = session.get(Contract, id_contract)
+        if contract:
+            if contract.is_signed is True:
+                click.echo("Creating a new event:")
+                event_name = click.prompt("Event Name", type=str)
+                event_date_start = click.prompt(
+                    "Event Start Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
+                )
+                event_date_end = click.prompt(
+                    "Event End Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
+                )
+                location = click.prompt("Event Location", type=str)
+                attendees = click.prompt("Number of Attendees", type=int)
+                notes = click.prompt("Event Notes", type=str)
 
-        if contract.is_signed is True:
-            click.echo("Creating a new event:")
+                new_event = Event(
+                    event_name=event_name,
+                    event_date_start=event_date_start,
+                    event_date_end=event_date_end,
+                    location=location,
+                    attendees=attendees,
+                    notes=notes,
+                    contract_id=contract.id,
+                    support_contact_id=None,
+                )
 
-            event_name = click.prompt("Event Name", type=str)
-
-            event_date_start = click.prompt(
-                "Event Start Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
-            )
-            event_date_end = click.prompt(
-                "Event End Date (YYYY-MM-DD HH:MM)", type=click.DateTime()
-            )
-
-            location = click.prompt("Event Location", type=str)
-            attendees = click.prompt("Number of Attendees", type=int)
-            notes = click.prompt("Event Notes", type=str)
-
-            new_event = Event(
-                event_name=event_name,
-                event_date_start=event_date_start,
-                event_date_end=event_date_end,
-                location=location,
-                attendees=attendees,
-                notes=notes,
-                contract_id=contract.id,
-                support_contact_id=None,
-            )
-
-            session.add(new_event)
-            session.commit()
-            print("[bold green]Event created successfully[/bold green].")
+                session.add(new_event)
+                session.commit()
+                print("[bold green]Event created successfully[/bold green].")
+            else:
+                print("[bold red]Contract no signed[/bold red].")
         else:
-            print("[bold red]Contract no signed[/bold red].")
+            print("[bold red]Contract not found.[/bold red]")
 
 
 @cli.command()
@@ -505,12 +518,10 @@ def update_event(ctx, event_id):
                         if support_user:
                             event.support_contact_id = support_user.id
                             session.commit()
-                            click.echo(
-                                "[bold green]Event operation completed[/bold green]."
-                            )
+                            print("[bold green]Event operation completed[/bold green].")
                         else:
-                            click.echo(
-                                f"{support_email} is not a support user. Support contact not assigned."
+                            print(
+                                f"[bold red]{support_email} is not a support user. Support contact not assigned.[/bold red]"
                             )
                     else:
                         raise ValueError("No support user assigned.")
@@ -522,7 +533,7 @@ def update_event(ctx, event_id):
             raise ValueError("User does not have the required role for this operation.")
 
     except ValueError as e:
-        click.echo(f"Error : {e}")
+        print(f"[bold red]Error : {e}[/bold red]")
 
 
 @cli.command()
@@ -538,8 +549,13 @@ def delete_event(ctx, event_id):
             session.commit()
             print("[bold green]Event deleted successfully[/bold green].")
         else:
-            click.echo("Event not found or Permission denied.")
+            print("[bold red]Event not found.[/bold red]")
 
 
 if __name__ == "__main__":
+    sentry_sdk.init(
+        dsn="https://218fd0708459e9f02f9fa094de9ce64d@o4506610879954944.ingest.sentry.io/4506610888540160",
+        traces_sample_rate=1.0,
+        profiles_sample_rate=1.0,
+    )
     cli()
