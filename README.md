@@ -62,7 +62,7 @@ CRM Epic Events is a command-line customer relationship management (CRM) applica
    ```
 
 ## Create database
-Install PostgreSQL → [PostgreSQL](https://www.postgresql.org/download/). Follow the documentation to run the server.
+Install [PostgreSQL](https://www.postgresql.org/download/). Follow the documentation to run the server.
 
 
 
