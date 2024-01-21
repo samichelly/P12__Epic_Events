@@ -68,11 +68,3 @@ Configure the database with DATABASE Constant in CRM_EPIC_EVENTS\CRM_EPIC_EVENTS
 
 
 
-
-
-
-
-### Django administration
-Identifiant : Admin | Mot de passe : litreview
-
-→ http://127.0.0.1:8000/admin/
