@@ -81,3 +81,8 @@ Configure the database by granting the DATABASE constant in
 
 3. Follow the menu
 
+## Logging with Sentry
+1. Follow this [documentation](https://docs.sentry.io/platforms/python/)
+2. Adapt the 'dsn' value in views.py with your personal 'dsn'
+
+
