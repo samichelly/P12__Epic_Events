@@ -13,12 +13,12 @@ CRM Epic Events is a command-line customer relationship management (CRM) applica
 
 
 
-## Table des matières
+## Table of Contents
 
 - [Installation](#installation)
-- [Create database](#database)
-- [Utilisation](#utilisation)
-- [Création d'un nouvel utilisateur](#creation)
+- [Create and Configure Database](#create-and-configure-database)
+- [Running App](#running-app)
+- [Logging with Sentry](#logging-with-sentry)
 
 
 ## Installation
@@ -29,41 +29,41 @@ CRM Epic Events is a command-line customer relationship management (CRM) applica
    git clone https://github.com/samichelly/P12__Epic_Events.git
 
 
-2. Accédez au répertoire du projet :
+2. Navigate to the project directory :
 
    ```bash
    cd P12__Epic_Events
    ```
 
-3. Créez un environnement virtuel pour isoler les dépendances :
+3. Create a virtual environment to isolate dependencies :
 
    ```bash
    python -m venv venv
    ```
 
-4. Activez l'environnement virtuel (selon votre système d'exploitation) :
+4. Activate the virtual environment (based on your operating system) :
 
-   - Sur Windows :
+   - On Windows :
 
      ```bash
      venv\Scripts\activate
      ```
 
-   - Sur macOS et Linux :
+   - On macOS and Linux :
 
      ```bash
      source venv/bin/activate
      ```
 
-5. Installez les dépendances à partir du fichier `requirements.txt` :
+5. Install dependencies :
 
    ```bash
    pip install -r requirements.txt
    ```
 
 ## Create and configure database
-Install [PostgreSQL](https://www.postgresql.org/download/). Follow the [documentation to configure the database](https://www.postgresql.org/docs/).
-Configure the database by granting the DATABASE constant in 
+1. Install [PostgreSQL](https://www.postgresql.org/download/). Follow the [documentation to configure the database](https://www.postgresql.org/docs/).
+2. Configure the database by granting the DATABASE constant in 
    ```bash
    CRM_EPIC_EVENTS\CRM_EPIC_EVENTS\settings.py
    ```
