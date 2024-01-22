@@ -71,7 +71,7 @@ CRM Epic Events is a command-line customer relationship management (CRM) applica
 ## Running app
 1. Navigate to the file to execute, from the project root :
    ```bash
-   cd CRM_EPIC_EVENTS\users
+   cd .\CRM_EPIC_EVENTS\users\
    ```
 
 2. Run :
