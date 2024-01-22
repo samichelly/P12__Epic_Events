@@ -63,7 +63,10 @@ CRM Epic Events is a command-line customer relationship management (CRM) applica
 
 ## Create and configure database
 Install [PostgreSQL](https://www.postgresql.org/download/). Follow the [documentation to configure the database](https://www.postgresql.org/docs/).
-Configure the database with DATABASE Constant in CRM_EPIC_EVENTS\CRM_EPIC_EVENTS\settings.py
+Configure the database by granting the DATABASE constant in 
+```bash
+CRM_EPIC_EVENTS\CRM_EPIC_EVENTS\settings.py
+```
 
 
 
