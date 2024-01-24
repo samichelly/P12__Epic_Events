@@ -36,14 +36,11 @@ def main(ctx):
     in_app = True
     while in_app:
         choices = [
-            # "create_user",
             "login",
             "exit",
         ]
         action = click.prompt("Select a choice", type=click.Choice(choices))
 
-        # if action == "create_user":
-        #     ctx.invoke(create_user)
         if action == "login":
             log_in = ctx.invoke(login)
             if log_in is True:
@@ -192,7 +189,6 @@ def delete_user(ctx):
     if management_permission(ctx):
         user_email = click.prompt("Enter User email to delete", type=str)
         user_to_delete = session.query(User).filter_by(email=user_email).first()
-        # user_to_delete = session.get(User, ctx.user.id)
 
         if user_to_delete:
             role_name = user_to_delete.role.name
