@@ -1,4 +1,5 @@
 import click
+import os
 from datetime import datetime
 from rich import print
 from rich.padding import Padding
@@ -35,15 +36,15 @@ def main(ctx):
     in_app = True
     while in_app:
         choices = [
-            "create_user",
+            # "create_user",
             "login",
             "exit",
         ]
         action = click.prompt("Select a choice", type=click.Choice(choices))
 
-        if action == "create_user":
-            ctx.invoke(create_user)
-        elif action == "login":
+        # if action == "create_user":
+        #     ctx.invoke(create_user)
+        if action == "login":
             log_in = ctx.invoke(login)
             if log_in is True:
                 ctx.invoke(authenticated_users)
@@ -64,6 +65,7 @@ def authenticated_users(ctx):
             ctx.invoke(lists_customers_contracts_events)
 
             choices = [
+                "create_user",
                 "create-customer",
                 "create-contract",
                 "create-event",
@@ -79,7 +81,9 @@ def authenticated_users(ctx):
 
             action = click.prompt("Select a choice", type=click.Choice(choices))
 
-            if action == "create-customer":
+            if action == "create_user":
+                ctx.invoke(create_user)
+            elif action == "create-customer":
                 ctx.invoke(create_customer)
             elif action == "create-contract":
                 customer_id = click.prompt("Select ID Customer", type=int)
@@ -145,86 +149,93 @@ def logout(ctx):
 
 
 @cli.command()
-def create_user():
+@pass_context
+def create_user(ctx):
     """Create a new user."""
-    click.echo("Creating a new user:")
-    email = click.prompt("Email", type=str)
-    password = click.prompt(
-        "Password", type=str, hide_input=True, confirmation_prompt=True
-    )
-    first_name = click.prompt("First Name", type=str)
-    last_name = click.prompt("Last Name", type=str)
-    phone_number = click.prompt("Phone Number", type=str)
-    role = click.prompt("Role", type=click.Choice(["sales", "support", "management"]))
+    if management_permission(ctx):
+        click.echo("Creating a new user:")
+        email = click.prompt("Email", type=str)
+        password = click.prompt(
+            "Password", type=str, hide_input=True, confirmation_prompt=True
+        )
+        first_name = click.prompt("First Name", type=str)
+        last_name = click.prompt("Last Name", type=str)
+        phone_number = click.prompt("Phone Number", type=str)
+        role = click.prompt(
+            "Role", type=click.Choice(["sales", "support", "management"])
+        )
 
-    new_user = User(
-        email=email,
-        password=password,
-        first_name=first_name,
-        last_name=last_name,
-        phone_number=phone_number,
-        role=role,
-    )
+        new_user = User(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            phone_number=phone_number,
+            role=role,
+        )
 
-    try:
-        session.add(new_user)
-        session.commit()
-        sentry_sdk.capture_message(f"User {new_user} created successfully!")
-        print("[bold green]User created successfully[/bold green].")
+        try:
+            session.add(new_user)
+            session.commit()
+            sentry_sdk.capture_message(f"User {new_user} created successfully!")
+            print("[bold green]User created successfully[/bold green].")
 
-    except Exception as e:
-        print(f"[bold red]Error creating customer: {e}[/bold red].")
-        sentry_sdk.capture_message(f"Error creating user: {e}")
+        except Exception as e:
+            print(f"[bold red]Error creating user: {e}[/bold red].")
+            sentry_sdk.capture_message(f"Error creating user: {e}")
 
 
 @cli.command()
 @pass_context
 def delete_user(ctx):
     """Delete user."""
-    user_to_delete = session.get(User, ctx.user.id)
+    if management_permission(ctx):
+        user_email = click.prompt("Enter User email to delete", type=str)
+        user_to_delete = session.query(User).filter_by(email=user_email).first()
+        # user_to_delete = session.get(User, ctx.user.id)
 
-    if user_to_delete:
-        role_name = user_to_delete.role.name
-        user_to_delete.is_active = False
-        user_to_delete.phone_number = None
+        if user_to_delete:
+            role_name = user_to_delete.role.name
+            user_to_delete.is_active = False
+            user_to_delete.phone_number = None
 
-        replacement_user = (
-            session.query(User)
-            .filter(
-                User.id != user_to_delete.id, User.role == role_name, User.is_active
+            replacement_user = (
+                session.query(User)
+                .filter(
+                    User.id != user_to_delete.id, User.role == role_name, User.is_active
+                )
+                .first()
             )
-            .first()
-        )
 
-        if replacement_user:
-            for customer in user_to_delete.customer_sales:
-                customer.sales_contact_id = replacement_user.id
+            if replacement_user:
+                for customer in user_to_delete.customer_sales:
+                    customer.sales_contact_id = replacement_user.id
+                    print(
+                        f"[bold yellow]{customer} reassigned to {replacement_user}[/bold yellow]."
+                    )
+
+                for contract in user_to_delete.contract_management:
+                    contract.management_contact_id = replacement_user.id
+                    print(
+                        f"[bold yellow]Contract {contract.id} reassigned to {replacement_user}[/bold yellow]."
+                    )
+
+                for event in user_to_delete.event_support:
+                    event.support_contact_id = replacement_user.id
+                    print(
+                        f"[bold yellow]{event.event_name} reassigned to {replacement_user}[/bold yellow]."
+                    )
+
+                session.commit()
+
+                print("[bold green]User deleted successfully[/bold green].")
+                return True
+            else:
                 print(
-                    f"[bold yellow]{customer} reassigned to {replacement_user}[/bold yellow]."
+                    "[bold red]No remplacement user. Please create a new user with same role[/bold red]."
                 )
-
-            for contract in user_to_delete.contract_management:
-                contract.management_contact_id = replacement_user.id
-                print(
-                    f"[bold yellow]Contract {contract.id} reassigned to {replacement_user}[/bold yellow]."
-                )
-
-            for event in user_to_delete.event_support:
-                event.support_contact_id = replacement_user.id
-                print(
-                    f"[bold yellow]{event.event_name} reassigned to {replacement_user}[/bold yellow]."
-                )
-
-            session.commit()
-
-            print("[bold green]User deleted successfully[/bold green].")
-            return True
         else:
-            print(
-                "[bold red]No remplacement user. Please create a new user with same role[/bold red]."
-            )
-    else:
-        print("[bold red]No user to delete found[/bold red].")
+            print("[bold red]No user to delete found[/bold red].")
 
 
 @cli.command()
@@ -553,8 +564,10 @@ def delete_event(ctx, event_id):
 
 
 if __name__ == "__main__":
+    sentry_dsn = os.environ.get("SENTRY_DSN")
     sentry_sdk.init(
-        dsn="https://218fd0708459e9f02f9fa094de9ce64d@o4506610879954944.ingest.sentry.io/4506610888540160",
+        # dsn="https://218fd0708459e9f02f9fa094de9ce64d@o4506610879954944.ingest.sentry.io/4506610888540160",
+        dsn=sentry_dsn,
         traces_sample_rate=1.0,
         profiles_sample_rate=1.0,
     )
